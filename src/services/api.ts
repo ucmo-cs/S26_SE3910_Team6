@@ -45,11 +45,11 @@
 // ============================================================================
 
 // Set to true to use mock data (for frontend development without backend)
-// Set to false to connect to your Spring Boot backend
-const USE_MOCK_DATA = true;
+// Set to false to connect to your backend
+const USE_MOCK_DATA = false;
 
-// Configure your Spring Boot backend URL here
-const API_BASE_URL = 'http://localhost:8080/api';
+// Configure your backend URL here
+const API_BASE_URL = 'http://localhost:3001/api';
 
 // ============================================================================
 // MOCK DATA
