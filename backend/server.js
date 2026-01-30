@@ -1,6 +1,12 @@
+// Load .env from project root then backend/ (so either location works)
+const path = require('path');
+require('dotenv').config(); // project root .env
+require('dotenv').config({ path: path.join(__dirname, '.env') }); // backend/.env
+
 const express = require('express');
 const cors = require('cors');
 const { createAppointment, isSlotBooked } = require('./db');
+const { sendAppointmentConfirmation } = require('./email');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -84,6 +90,16 @@ function generateId() {
 function isValidDateTime(dateTime) {
   const d = new Date(dateTime);
   return !Number.isNaN(d.getTime());
+}
+
+/** Normalize dateTime to HH:mm:ss so it matches generateSlots (e.g. "2026-02-01T09:00" -> "2026-02-01T09:00:00") */
+function normalizeDateTime(dateTime) {
+  if (!dateTime || typeof dateTime !== 'string') return dateTime;
+  const [datePart, timePart] = dateTime.split('T');
+  if (!timePart) return dateTime;
+  const parts = timePart.split(':');
+  if (parts.length === 2) return `${datePart}T${timePart}:00`;
+  return dateTime;
 }
 
 function isFutureDateTime(dateTime) {
@@ -336,6 +352,7 @@ app.post('/api/appointments', (req, res) => {
 
   const id = generateId();
   const createdAt = new Date().toISOString();
+  const normalizedDateTime = normalizeDateTime(dateTime);
 
   const appointment = {
     id,
@@ -343,7 +360,7 @@ app.post('/api/appointments', (req, res) => {
     email,
     topicId: String(topicId),
     branchId: String(branchId),
-    dateTime,
+    dateTime: normalizedDateTime,
     reason: reason || '',
     createdAt,
   };
@@ -366,6 +383,14 @@ app.post('/api/appointments', (req, res) => {
     });
   }
 
+  // Send confirmation email (async; do not block response)
+  sendAppointmentConfirmation(
+    appointment,
+    topic.name,
+    branch.name,
+    branch.address
+  ).catch((err) => console.error('[email] Confirmation failed:', err.message));
+
   res.status(201).json(appointment);
 });
 
@@ -375,5 +400,16 @@ app.post('/api/appointments', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Backend server listening on http://localhost:${PORT}`);
+  if (!process.env.RESEND_API_KEY) {
+    console.log('');
+    console.log('Email: RESEND_API_KEY is not set. To enable confirmation emails:');
+    console.log('  1. Create a file named .env in the backend folder (or project root)');
+    console.log('  2. Add one line:  RESEND_API_KEY=re_your_actual_key_here');
+    console.log('  3. Get a key at https://resend.com/api-keys');
+    console.log('  Example: backend/.env  or  .env in project root');
+    console.log('');
+  } else {
+    console.log('Email: RESEND_API_KEY set — confirmation emails enabled.');
+  }
 });
 

@@ -38,7 +38,7 @@ const findByBranchAndDateStmt = db.prepare(`
 const findSlotStmt = db.prepare(`
   SELECT 1
   FROM appointments
-  WHERE branch_id = ? AND date_time = ?
+  WHERE branch_id = ? AND (date_time = ? OR date_time = ?)
   LIMIT 1;
 `);
 
@@ -55,8 +55,11 @@ function createAppointment(appointment) {
   });
 }
 
+/** Match both "2026-02-01T09:00" and "2026-02-01T09:00:00" so old and new records are found */
 function isSlotBooked(branchId, dateTime) {
-  const row = findSlotStmt.get(String(branchId), dateTime);
+  const withSeconds = dateTime.includes(':00:00') ? dateTime : dateTime + ':00';
+  const withoutSeconds = withSeconds.replace(/:00$/, '');
+  const row = findSlotStmt.get(String(branchId), withSeconds, withoutSeconds);
   return !!row;
 }
 

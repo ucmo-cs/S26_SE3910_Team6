@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Calendar, Clock, MapPin, FileText, User, Mail, CheckCircle } from 'lucide-react';
 import { Appointment } from '../App';
 import { apiService } from '../services/api';
@@ -65,12 +65,22 @@ export function AppointmentForm({ onAppointmentBooked }: AppointmentFormProps) {
     }
   }, [selectedBranch]);
 
-  // Load time slots when date is selected
+  // Load time slots when date is selected, and refetch when returning to step 4 (e.g. after booking)
   useEffect(() => {
     if (selectedBranch && selectedDate) {
       loadTimeSlots(selectedBranch.id, selectedDate);
     }
   }, [selectedBranch, selectedDate]);
+
+  // Refetch time slots when user navigates back to step 4 from step 5 so newly booked slots show as unavailable
+  const prevStepRef = useRef(currentStep);
+  useEffect(() => {
+    const wasOnStep5 = prevStepRef.current === 5;
+    prevStepRef.current = currentStep;
+    if (wasOnStep5 && currentStep === 4 && selectedBranch && selectedDate) {
+      loadTimeSlots(selectedBranch.id, selectedDate);
+    }
+  }, [currentStep, selectedBranch, selectedDate]);
 
   const loadTopics = async () => {
     try {
@@ -438,11 +448,19 @@ export function AppointmentForm({ onAppointmentBooked }: AppointmentFormProps) {
                     type="button"
                     onClick={() => isAvailable && handleTimeSelect(time)}
                     disabled={!isAvailable}
-                    className={`p-3 border-2 rounded-lg transition-colors ${
+                    className={
                       isAvailable
-                        ? 'border-gray-200 cursor-pointer hover:border-[#74BE42] hover:bg-[#ffd10010]'
-                        : 'border-gray-100 bg-gray-100 text-gray-400 cursor-not-allowed'
-                    }`}
+                        ? 'p-3 border-2 border-gray-200 rounded-lg transition-colors cursor-pointer'
+                        : 'p-3 border-2 border-gray-100 bg-gray-100 text-gray-400 rounded-lg cursor-not-allowed'
+                    }
+                    onMouseEnter={isAvailable ? (e) => {
+                      e.currentTarget.style.borderColor = '#74BE42';
+                      e.currentTarget.style.backgroundColor = '#ffd10010';
+                    } : undefined}
+                    onMouseLeave={isAvailable ? (e) => {
+                      e.currentTarget.style.borderColor = '#e5e7eb';
+                      e.currentTarget.style.backgroundColor = '';
+                    } : undefined}
                   >
                     <div className={`font-medium ${!isAvailable ? 'line-through' : ''}`}>
                       {formatTime(time)}
