@@ -423,34 +423,36 @@ export function AppointmentForm({ onAppointmentBooked }: AppointmentFormProps) {
           </div>
           {loading ? (
             <div className="text-center py-8 text-gray-500">Loading available times...</div>
-          ) : availableTimeSlots.filter(slot => slot.available).length === 0 ? (
+          ) : availableTimeSlots.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              No time slots available for this date. Please select a different date.
+              No time slots for this date. Please select a different date.
             </div>
           ) : (
             <div className="grid gap-3 md:grid-cols-4">
-              {availableTimeSlots
-                .filter(slot => slot.available)
-                .map((slot) => {
-                  const time = slot.dateTime.split('T')[1].substring(0, 5);
-                  return (
-                    <button
-                      key={slot.dateTime}
-                      onClick={() => handleTimeSelect(time)}
-                      className="p-3 border-2 border-gray-200 rounded-lg transition-colors"
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = '#74BE42';
-                        e.currentTarget.style.backgroundColor = '#ffd10010';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = '#e5e7eb';
-                        e.currentTarget.style.backgroundColor = '';
-                      }}
-                    >
-                      <div className="font-medium">{formatTime(time)}</div>
-                    </button>
-                  );
-                })}
+              {availableTimeSlots.map((slot) => {
+                const time = slot.dateTime.split('T')[1].substring(0, 5);
+                const isAvailable = slot.available;
+                return (
+                  <button
+                    key={slot.dateTime}
+                    type="button"
+                    onClick={() => isAvailable && handleTimeSelect(time)}
+                    disabled={!isAvailable}
+                    className={`p-3 border-2 rounded-lg transition-colors ${
+                      isAvailable
+                        ? 'border-gray-200 cursor-pointer hover:border-[#74BE42] hover:bg-[#ffd10010]'
+                        : 'border-gray-100 bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                  >
+                    <div className={`font-medium ${!isAvailable ? 'line-through' : ''}`}>
+                      {formatTime(time)}
+                    </div>
+                    {!isAvailable && (
+                      <div className="text-xs mt-0.5 text-gray-400">Unavailable</div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
