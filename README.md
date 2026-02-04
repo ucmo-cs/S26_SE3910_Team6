@@ -76,6 +76,10 @@ From the project root:
 ```bash
 npm run server
 ```
+if you see an error along the lines of "missing cors," run
+```bash
+npm install cors
+```
 
 This starts the Express server on `http://localhost:3001` with these endpoints:
 
