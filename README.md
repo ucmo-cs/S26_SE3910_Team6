@@ -76,7 +76,7 @@ From the project root:
 ```bash
 npm run server
 ```
-if you see an error along the lines of "missing cors," run
+If you see an error along the lines of "missing cors":
 ```bash
 npm install cors
 ```
