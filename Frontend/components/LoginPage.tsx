@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { LogIn } from 'lucide-react';
 
 interface LoginPageProps {
-  onLogin: () => void;
+  onLogin: (isAdmin: boolean) => void;
 }
 
 export function LoginPage({ onLogin }: LoginPageProps) {
@@ -11,8 +11,11 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const normalizedUsername = username.trim().toLowerCase();
+    const normalizedPassword = password.trim().toLowerCase();
+    const isAdminLogin = normalizedUsername === 'admin' && normalizedPassword === 'admin';
     // Mock login - no validation required
-    onLogin();
+    onLogin(isAdminLogin);
   };
 
   return (
@@ -76,7 +79,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
           {/* Mock Login Notice */}
           <div className="mt-6 p-4 rounded-lg border" style={{ backgroundColor: '#ffd10020', borderColor: '#ffd100' }}>
             <p className="text-sm text-center" style={{ color: '#016649' }}>
-              <strong>Demo Mode:</strong> Enter any username and password to continue
+              <strong>Demo Mode:</strong> Enter any username and password to continue. Use <strong>admin</strong> / <strong>admin</strong> for admin access.
             </p>
           </div>
         </div>

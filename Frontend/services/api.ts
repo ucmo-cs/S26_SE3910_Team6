@@ -51,6 +51,7 @@ const USE_MOCK_DATA = false;
 // Configure your backend URL here
 const API_BASE_URL = 'http://localhost:3001/api';
 
+
 // ============================================================================
 // MOCK DATA
 // ============================================================================
@@ -116,6 +117,7 @@ const MOCK_BRANCHES: Branch[] = [
 
 // Store booked appointments in memory (for mock mode)
 const bookedAppointments: Set<string> = new Set();
+const mockAppointments: AppointmentResponse[] = [];
 
 // ============================================================================
 // INTERFACES
@@ -157,6 +159,7 @@ interface AppointmentResponse {
   branchId: string;
   dateTime: string;
   reason: string;
+  createdAt?: string;
 }
 
 class ApiService {
@@ -316,11 +319,17 @@ class ApiService {
       
       // Generate a mock appointment ID
       const id = `APT-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
-      
-      return {
+      const createdAt = new Date().toISOString();
+
+      const created = {
         id,
-        ...appointment
+        ...appointment,
+        createdAt,
       };
+
+      mockAppointments.unshift(created);
+      
+      return created;
     }
 
     const response = await fetch(`${this.baseUrl}/appointments`, {
@@ -334,6 +343,64 @@ class ApiService {
       throw new Error('Failed to create appointment');
     }
     return response.json();
+  }
+
+  /**
+   * GET /api/appointments
+   * Retrieves all appointments (admin)
+   */
+  async getAllAppointments(): Promise<AppointmentResponse[]> {
+    if (this.useMock) {
+      await this.delay();
+      return [...mockAppointments];
+    }
+
+    const response = await fetch(`${this.baseUrl}/appointments`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch appointments');
+    }
+    return response.json();
+  }
+
+  /**
+   * DELETE /api/appointments/{id}
+   * Deletes an appointment (admin)
+   */
+  async deleteAppointment(appointmentId: string): Promise<void> {
+    if (this.useMock) {
+      await this.delay();
+      const index = mockAppointments.findIndex((apt) => apt.id === appointmentId);
+      if (index >= 0) {
+        mockAppointments.splice(index, 1);
+      }
+      return;
+    }
+
+    const response = await fetch(`${this.baseUrl}/appointments/${appointmentId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok && response.status !== 204) {
+      throw new Error('Failed to delete appointment');
+    }
+  }
+
+  /**
+   * DELETE /api/appointments
+   * Deletes all appointments (admin)
+   */
+  async deleteAllAppointments(): Promise<void> {
+    if (this.useMock) {
+      await this.delay();
+      mockAppointments.splice(0, mockAppointments.length);
+      return;
+    }
+
+    const response = await fetch(`${this.baseUrl}/appointments`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to delete appointments');
+    }
   }
 
   /**

@@ -5,14 +5,14 @@ require('dotenv').config({ path: path.join(__dirname, '.env') }); // backend/.en
 
 const express = require('express');
 const cors = require('cors');
-const { createAppointment, isSlotBooked } = require('./db');
+const { createAppointment, isSlotBooked, getAllAppointments, deleteAppointmentById, deleteAllAppointments } = require('./db');
 const { sendAppointmentConfirmation } = require('./email');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  origin: true,
 }));
 app.use(express.json());
 
@@ -394,6 +394,39 @@ app.post('/api/appointments', (req, res) => {
   res.status(201).json(appointment);
 });
 
+// 6. GET /api/appointments (admin: list all)
+app.get('/api/appointments', (req, res) => {
+  const appointments = getAllAppointments();
+  res.json(appointments);
+});
+
+// 7. DELETE /api/appointments/:id (admin: delete)
+app.delete('/api/appointments/:id', (req, res) => {
+  const { id } = req.params || {};
+  if (!id) {
+    return res.status(400).json({
+      error: 'Missing required parameter: id',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  const deleted = deleteAppointmentById(id);
+  if (!deleted) {
+    return res.status(404).json({
+      error: 'Appointment not found',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  return res.status(204).send();
+});
+
+// 8. DELETE /api/appointments (admin: delete all)
+app.delete('/api/appointments', (req, res) => {
+  const deletedCount = deleteAllAppointments();
+  return res.status(200).json({ deleted: deletedCount });
+});
+
 // -----------------------------------------------------------------------------
 // Start server
 // -----------------------------------------------------------------------------
@@ -412,4 +445,3 @@ app.listen(PORT, () => {
     console.log('Email: RESEND_API_KEY set — confirmation emails enabled.');
   }
 });
-

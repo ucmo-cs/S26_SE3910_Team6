@@ -24,9 +24,27 @@ interface TimeSlot {
 
 interface AppointmentFormProps {
   onAppointmentBooked: (appointment: Appointment) => void;
+  onLogout: () => void;
 }
 
-export function AppointmentForm({ onAppointmentBooked }: AppointmentFormProps) {
+export function AppointmentForm({ onAppointmentBooked, onLogout }: AppointmentFormProps) {
+  const [hoveredBranchId, setHoveredBranchId] = useState<string | null>(null);
+  const [agentInput, setAgentInput] = useState('');
+  const [agentResponse, setAgentResponse] = useState<string | null>(null);
+  const [agentMode, setAgentMode] = useState<'idle' | 'guide'>('idle');
+  const branchPinPositions: Record<string, { left: number; top: number }> = {
+    'Downtown Main Branch': { left: 48, top: 52 },
+    'Westside Branch': { left: 28, top: 46 },
+    'Business District Branch': { left: 60, top: 44 },
+    'Suburban Plaza Branch': { left: 68, top: 60 },
+  };
+
+  const fallbackPins = [
+    { left: 22, top: 40 },
+    { left: 40, top: 55 },
+    { left: 58, top: 42 },
+    { left: 72, top: 58 },
+  ];
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -107,6 +125,56 @@ export function AppointmentForm({ onAppointmentBooked }: AppointmentFormProps) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getTopicSuggestion = (input: string) => {
+    const text = input.toLowerCase();
+    if (text.includes('loan') || text.includes('borrow') || text.includes('rate') || text.includes('refinance')) {
+      return 'Personal Loans';
+    }
+    if (text.includes('credit') || text.includes('card') || text.includes('limit') || text.includes('balance')) {
+      return 'Credit Cards';
+    }
+    if (text.includes('mortgage') || text.includes('home') || text.includes('house')) {
+      return 'Mortgage Services';
+    }
+    if (text.includes('invest') || text.includes('retire') || text.includes('portfolio') || text.includes('planning')) {
+      return 'Investment Advisory';
+    }
+    if (text.includes('business') || text.includes('merchant') || text.includes('payroll') || text.includes('company')) {
+      return 'Business Banking';
+    }
+    return null;
+  };
+
+  const handleAgentSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = agentInput.trim().toLowerCase();
+    if (!trimmed || trimmed.includes("not sure") || trimmed.includes("unsure") || trimmed.includes("dont know") || trimmed.includes("don't know")) {
+      setAgentMode('guide');
+      setAgentResponse('No worries! Pick the option that fits best:');
+      return;
+    }
+
+    const suggestion = getTopicSuggestion(agentInput);
+    if (suggestion) {
+      setAgentResponse(`It sounds like “${suggestion}” is the best fit. Select that topic to continue.`);
+      setAgentMode('idle');
+    } else {
+      setAgentMode('guide');
+      setAgentResponse('I can help! Choose a description below, and I’ll point you to the right topic:');
+    }
+  };
+
+  const handleAgentOption = (label: string, hint: string) => {
+    setAgentInput(hint);
+    const suggestion = getTopicSuggestion(hint);
+    if (suggestion) {
+      setAgentResponse(`That sounds like “${suggestion}”. Select it to continue.`);
+      setAgentMode('idle');
+    } else {
+      setAgentResponse(`Thanks! Based on that, try: ${label}.`);
     }
   };
 
@@ -225,9 +293,21 @@ export function AppointmentForm({ onAppointmentBooked }: AppointmentFormProps) {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       {/* Header */}
-      <div className="text-center mb-8">
-        <h1 className="mb-2">Book an Appointment</h1>
-        <p className="text-gray-600">Schedule a visit with one of our representatives</p>
+      <div className="flex items-start justify-between mb-8">
+        <div>
+          <h1 className="mb-2">Book an Appointment</h1>
+          <p className="text-gray-600">Schedule a visit with one of our representatives</p>
+        </div>
+        <button
+          type="button"
+          className="px-4 py-2 text-white rounded-lg"
+          style={{ backgroundColor: '#016649' }}
+          onClick={onLogout}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#014d37'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#016649'}
+        >
+          Log Out
+        </button>
       </div>
 
       {/* Progress Steps */}
@@ -282,7 +362,7 @@ export function AppointmentForm({ onAppointmentBooked }: AppointmentFormProps) {
       {currentStep === 1 && (
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <h2 className="mb-4 flex items-center gap-2">
-            <FileText className="w-5 h-5" style={{ color: '#00B6E2' }} />
+            <FileText className="w-5 h-5" style={{ color: '#FFD100' }} />
             Select Appointment Topic
           </h2>
           {loading ? (
@@ -312,6 +392,78 @@ export function AppointmentForm({ onAppointmentBooked }: AppointmentFormProps) {
         </div>
       )}
 
+      {currentStep === 1 && (
+        <div
+          className="fixed bottom-6 right-6 w-80 bg-white border border-gray-200 rounded-lg shadow-lg p-4"
+          style={{ zIndex: 50 }}
+        >
+          <div className="font-medium mb-1">Need help picking a topic?</div>
+          <div className="text-sm text-gray-600 mb-3">
+            Tell me what you’re looking to do and I’ll point you to the right option.
+          </div>
+          <form onSubmit={handleAgentSubmit} className="flex gap-2">
+            <input
+              type="text"
+              value={agentInput}
+              onChange={(e) => setAgentInput(e.target.value)}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              placeholder="e.g., open a credit card"
+            />
+            <button
+              type="submit"
+              className="px-3 py-2 text-sm text-white rounded-lg"
+              style={{ backgroundColor: '#016649' }}
+            >
+              Ask
+            </button>
+          </form>
+          {agentResponse && (
+            <div className="mt-3 text-sm text-gray-700">
+              {agentResponse}
+            </div>
+          )}
+          {agentMode === 'guide' && (
+            <div className="mt-3 grid gap-2 text-sm">
+              <button
+                type="button"
+                className="text-left px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
+                onClick={() => handleAgentOption('Personal Loans', 'I want to borrow money or discuss loan rates')}
+              >
+                Borrow money or loan rates
+              </button>
+              <button
+                type="button"
+                className="text-left px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
+                onClick={() => handleAgentOption('Credit Cards', 'I want a new credit card or have a card question')}
+              >
+                Credit card help
+              </button>
+              <button
+                type="button"
+                className="text-left px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
+                onClick={() => handleAgentOption('Mortgage Services', 'I need help with a home loan or mortgage')}
+              >
+                Home loan / mortgage
+              </button>
+              <button
+                type="button"
+                className="text-left px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
+                onClick={() => handleAgentOption('Investment Advisory', 'I want investment or retirement advice')}
+              >
+                Investing / retirement
+              </button>
+              <button
+                type="button"
+                className="text-left px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
+                onClick={() => handleAgentOption('Business Banking', 'I have a business and need banking services')}
+              >
+                Business banking
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Step 2: Select Branch */}
       {currentStep === 2 && selectedTopic && (
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
@@ -319,12 +471,12 @@ export function AppointmentForm({ onAppointmentBooked }: AppointmentFormProps) {
             <button
               onClick={() => setCurrentStep(1)}
               className="text-sm mb-2 hover:underline"
-              style={{ color: '#00B6E2' }}
+              style={{ color: '#FFD100' }}
             >
               ← Change Topic
             </button>
             <h2 className="flex items-center gap-2">
-              <MapPin className="w-5 h-5" style={{ color: '#00B6E2' }} />
+            <MapPin className="w-5 h-5" style={{ color: '#FFD100' }} />
               Select Branch Location
             </h2>
             <p className="text-sm text-gray-600 mt-1">
@@ -338,7 +490,77 @@ export function AppointmentForm({ onAppointmentBooked }: AppointmentFormProps) {
               No branches available for this topic.
             </div>
           ) : (
-            <div className="grid gap-4">
+            <div className="space-y-4">
+              <div className="w-full rounded-lg border border-gray-200 bg-white p-4">
+                <div className="text-sm font-medium text-gray-700 mb-2">Fictional Branch Map</div>
+                <div
+                  className="w-full overflow-hidden rounded-lg border border-gray-200"
+                  style={{ position: 'relative' }}
+                >
+                  <img
+                    src="/kc-map2.jpg"
+                    alt="City map"
+                    className="w-full h-auto block align-top"
+                  />
+                  <div
+                    style={{ position: 'absolute', inset: 0, zIndex: 2 }}
+                  >
+                    {branches.map((branch, index) => {
+                      const position = branchPinPositions[branch.name] ?? fallbackPins[index % fallbackPins.length];
+                      const isHovered = hoveredBranchId === branch.id;
+                      return (
+                        <div
+                          key={`pin-${branch.id}`}
+                          style={{
+                            position: 'absolute',
+                            left: `${position.left}%`,
+                            top: `${position.top}%`,
+                            transform: 'translate(-50%, -100%)',
+                          }}
+                          aria-hidden="true"
+                          onMouseEnter={() => setHoveredBranchId(branch.id)}
+                          onMouseLeave={() => setHoveredBranchId(null)}
+                        >
+                          <div style={{ position: 'relative' }}>
+                            <svg width="24" height="32" viewBox="0 0 18 24" role="presentation">
+                              <path
+                                d="M9 1.5c-4 0-7.25 3.05-7.25 6.82 0 4.91 5.96 12.11 6.53 12.81.18.23.53.23.71 0 .57-.7 6.53-7.9 6.53-12.81C15.5 4.55 13.01 1.5 9 1.5z"
+                                fill="#016649"
+                                stroke="#ffffff"
+                                strokeWidth="1.2"
+                              />
+                              <circle cx="9" cy="8.2" r="2.4" fill="#ffffff" />
+                            </svg>
+                            <div
+                              className="pointer-events-none"
+                              style={{
+                                position: 'absolute',
+                                left: '28px',
+                                top: '2px',
+                                backgroundColor: 'rgba(255, 255, 255, 0.92)',
+                                color: '#1f2937',
+                                borderRadius: '8px',
+                                padding: '6px 8px',
+                                border: '1px solid #e5e7eb',
+                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+                                lineHeight: 1.2,
+                                maxWidth: '220px',
+                                opacity: isHovered ? 1 : 0,
+                                transform: isHovered ? 'translateY(0)' : 'translateY(4px)',
+                                transition: 'opacity 120ms ease, transform 120ms ease',
+                              }}
+                            >
+                              <div style={{ fontSize: '12px', fontWeight: 600 }}>{branch.name}</div>
+                              <div style={{ fontSize: '11px', color: '#4b5563' }}>{branch.address}</div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+              <div className="grid gap-4">
               {branches.map((branch) => (
                 <button
                   key={branch.id}
@@ -358,6 +580,7 @@ export function AppointmentForm({ onAppointmentBooked }: AppointmentFormProps) {
                   <div className="text-sm text-gray-500 mt-1">{branch.phone}</div>
                 </button>
               ))}
+              </div>
             </div>
           )}
         </div>
@@ -370,12 +593,12 @@ export function AppointmentForm({ onAppointmentBooked }: AppointmentFormProps) {
             <button
               onClick={() => setCurrentStep(2)}
               className="text-sm mb-2 hover:underline"
-              style={{ color: '#00B6E2' }}
+              style={{ color: '#FFD100' }}
             >
               ← Change Branch
             </button>
             <h2 className="flex items-center gap-2">
-              <Calendar className="w-5 h-5" style={{ color: '#00B6E2' }} />
+            <Calendar className="w-5 h-5" style={{ color: '#FFD100' }} />
               Select Date
             </h2>
             <p className="text-sm text-gray-600 mt-1">
@@ -419,12 +642,12 @@ export function AppointmentForm({ onAppointmentBooked }: AppointmentFormProps) {
             <button
               onClick={() => setCurrentStep(3)}
               className="text-sm mb-2 hover:underline"
-              style={{ color: '#00B6E2' }}
+              style={{ color: '#FFD100' }}
             >
               ← Change Date
             </button>
             <h2 className="flex items-center gap-2">
-              <Clock className="w-5 h-5" style={{ color: '#00B6E2' }} />
+            <Clock className="w-5 h-5" style={{ color: '#FFD100' }} />
               Select Time
             </h2>
             <p className="text-sm text-gray-600 mt-1">
@@ -480,7 +703,7 @@ export function AppointmentForm({ onAppointmentBooked }: AppointmentFormProps) {
       {currentStep === 5 && (
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <h2 className="mb-6">
-            <User className="w-5 h-5 inline mr-2" style={{ color: '#00B6E2' }} />
+            <User className="w-5 h-5 inline mr-2" style={{ color: '#FFD100' }} />
             Your Information
           </h2>
 
@@ -509,7 +732,7 @@ export function AppointmentForm({ onAppointmentBooked }: AppointmentFormProps) {
               type="button"
               onClick={() => setCurrentStep(4)}
               className="text-sm mt-3 hover:underline"
-              style={{ color: '#00B6E2' }}
+              style={{ color: '#FFD100' }}
             >
               ← Change Appointment
             </button>

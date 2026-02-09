@@ -4,9 +4,10 @@ import { Appointment } from '../App';
 interface ConfirmationPageProps {
   appointment: Appointment;
   onBookAnother: () => void;
+  onLogout: () => void;
 }
 
-export function ConfirmationPage({ appointment, onBookAnother }: ConfirmationPageProps) {
+export function ConfirmationPage({ appointment, onBookAnother, onLogout }: ConfirmationPageProps) {
   const formatDateTime = (dateTimeString: string) => {
     const date = new Date(dateTimeString);
     return {
@@ -29,6 +30,18 @@ export function ConfirmationPage({ appointment, onBookAnother }: ConfirmationPag
   return (
     <div className="max-w-2xl mx-auto px-4 py-12">
       <div className="bg-white rounded-lg shadow-lg p-8">
+        <div className="flex justify-end mb-4">
+          <button
+            type="button"
+            className="px-4 py-2 text-white rounded-lg"
+            style={{ backgroundColor: '#016649' }}
+            onClick={onLogout}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#014d37'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#016649'}
+          >
+            Log Out
+          </button>
+        </div>
         {/* Success Icon */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
@@ -43,7 +56,7 @@ export function ConfirmationPage({ appointment, onBookAnother }: ConfirmationPag
         {/* Confirmation Details */}
         <div className="border-t border-b border-gray-200 py-6 my-6 space-y-4">
           <div className="flex items-start gap-3">
-            <User className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: '#00B6E2' }} />
+            <User className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: '#FFD100' }} />
             <div>
               <div className="text-sm text-gray-600">Name</div>
               <div className="font-medium">{appointment.name}</div>
@@ -51,7 +64,7 @@ export function ConfirmationPage({ appointment, onBookAnother }: ConfirmationPag
           </div>
 
           <div className="flex items-start gap-3">
-            <Mail className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: '#00B6E2' }} />
+            <Mail className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: '#FFD100' }} />
             <div>
               <div className="text-sm text-gray-600">Email</div>
               <div className="font-medium">{appointment.email}</div>
@@ -59,7 +72,7 @@ export function ConfirmationPage({ appointment, onBookAnother }: ConfirmationPag
           </div>
 
           <div className="flex items-start gap-3">
-            <FileText className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: '#00B6E2' }} />
+            <FileText className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: '#FFD100' }} />
             <div>
               <div className="text-sm text-gray-600">Topic</div>
               <div className="font-medium">{appointment.topicName}</div>
@@ -67,7 +80,7 @@ export function ConfirmationPage({ appointment, onBookAnother }: ConfirmationPag
           </div>
 
           <div className="flex items-start gap-3">
-            <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: '#00B6E2' }} />
+            <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: '#FFD100' }} />
             <div>
               <div className="text-sm text-gray-600">Branch Location</div>
               <div className="font-medium">{appointment.branchName}</div>
@@ -76,7 +89,7 @@ export function ConfirmationPage({ appointment, onBookAnother }: ConfirmationPag
           </div>
 
           <div className="flex items-start gap-3">
-            <Calendar className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: '#00B6E2' }} />
+            <Calendar className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: '#FFD100' }} />
             <div>
               <div className="text-sm text-gray-600">Date</div>
               <div className="font-medium">{date}</div>
@@ -84,7 +97,7 @@ export function ConfirmationPage({ appointment, onBookAnother }: ConfirmationPag
           </div>
 
           <div className="flex items-start gap-3">
-            <Clock className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: '#00B6E2' }} />
+            <Clock className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: '#FFD100' }} />
             <div>
               <div className="text-sm text-gray-600">Time</div>
               <div className="font-medium">{time}</div>
@@ -94,7 +107,7 @@ export function ConfirmationPage({ appointment, onBookAnother }: ConfirmationPag
 
           {appointment.reason && (
             <div className="flex items-start gap-3">
-              <FileText className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: '#00B6E2' }} />
+              <FileText className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: '#FFD100' }} />
               <div>
                 <div className="text-sm text-gray-600">Additional Notes</div>
                 <div className="font-medium">{appointment.reason}</div>

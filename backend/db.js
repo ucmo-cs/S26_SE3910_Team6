@@ -35,11 +35,27 @@ const findByBranchAndDateStmt = db.prepare(`
   WHERE branch_id = ? AND date_time LIKE ?;
 `);
 
+const findAllStmt = db.prepare(`
+  SELECT id, name, email, topic_id as topicId, branch_id as branchId,
+         date_time as dateTime, reason, created_at as createdAt
+  FROM appointments
+  ORDER BY created_at DESC;
+`);
+
 const findSlotStmt = db.prepare(`
   SELECT 1
   FROM appointments
   WHERE branch_id = ? AND (date_time = ? OR date_time = ?)
   LIMIT 1;
+`);
+
+const deleteByIdStmt = db.prepare(`
+  DELETE FROM appointments
+  WHERE id = ?;
+`);
+
+const deleteAllStmt = db.prepare(`
+  DELETE FROM appointments;
 `);
 
 function createAppointment(appointment) {
@@ -69,10 +85,26 @@ function getAppointmentsForBranchDate(branchId, dateString) {
   return findByBranchAndDateStmt.all(String(branchId), pattern);
 }
 
+function getAllAppointments() {
+  return findAllStmt.all();
+}
+
+function deleteAppointmentById(id) {
+  const info = deleteByIdStmt.run(String(id));
+  return info.changes > 0;
+}
+
+function deleteAllAppointments() {
+  const info = deleteAllStmt.run();
+  return info.changes;
+}
+
 module.exports = {
   db,
   createAppointment,
   isSlotBooked,
   getAppointmentsForBranchDate,
+  getAllAppointments,
+  deleteAppointmentById,
+  deleteAllAppointments,
 };
-
