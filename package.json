@@ -59,6 +59,6 @@
       "scripts": {
             "dev": "vite",
             "build": "vite build",
-            "server": "node backend/server.js"
+            "server": "node Backend/server.js"
       }
 }
