@@ -1,0 +1,8 @@
+node_modules
+.DS_Store
+.env
+backend/.env
+Backend/.env
+# DB is created on first run; ignore so clones start fresh
+backend/appointments.db
+Backend/appointments.db
