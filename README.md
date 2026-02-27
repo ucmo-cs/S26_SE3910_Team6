@@ -151,20 +151,11 @@ When an appointment is booked, the backend can send a confirmation email via [Re
 
 ### Resetting all appointments
 
-If you want to clear **all** appointments and make every slot available again, you have two options:
+If you want to clear **all** appointments and make every slot available again:
 
 **Option A: Delete the DB file (it will be recreated)**  
 
-```bash
-rm Backend/appointments.db
-npm run server
-```
-
-**Option B: Clear the table using SQLite CLI (if installed)**  
-
-```bash
-sqlite3 Backend/appointments.db "DELETE FROM appointments;"
-```
+Login as admin and select delete all
 
 ---
 
