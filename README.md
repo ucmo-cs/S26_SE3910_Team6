@@ -151,9 +151,7 @@ When an appointment is booked, the backend can send a confirmation email via [Re
 
 ### Resetting all appointments
 
-If you want to clear **all** appointments and make every slot available again:
-
-**Option A: Delete the DB file (it will be recreated)**  
+If you want to clear **all** appointments and make every slot available again: 
 
 Login as admin and select delete all
 
