@@ -102,6 +102,7 @@ This starts the Express server on `http://localhost:3001` with these endpoints:
 - `GET /api/appointments/available-dates?branchId={branchId}`
 - `GET /api/appointments/available-slots?branchId={branchId}&date={date}`
 - `POST /api/appointments`
+- `POST /api/agent/topic-suggestion`
 - `GET /api/appointments` (admin)
 - `DELETE /api/appointments/:id` (admin)
 - `DELETE /api/appointments` (admin)
@@ -128,6 +129,43 @@ Open that URL in your browser and you can:
 6. Enter your details and confirm
 
 The frontend is configured to talk to the Node backend at `http://localhost:3001/api` via `Frontend/services/api.ts`.
+
+---
+
+## Enable OpenAI Topic Assistance
+
+The guided topic helper uses OpenAI via `POST /api/agent/topic-suggestion`.
+
+1. Create an OpenAI API key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys).
+2. From the project root, create your env file:
+
+```bash
+cp Backend/.env.example Backend/.env
+```
+
+3. Edit `Backend/.env` and set:
+
+```env
+OPENAI_API_KEY=sk-your-real-key
+```
+
+4. Optional: choose a different model (default is `gpt-4o-mini`):
+
+```env
+OPENAI_MODEL=gpt-4o-mini
+```
+
+5. Restart the backend:
+
+```bash
+npm run server
+```
+
+6. In the app, go to **Step 1 (Topic)** and use the bottom-right helper. Enter a request like:
+   - "I need to open a checking account"
+   - "I want help with a mortgage"
+
+If the key is missing or invalid, topic assistance will fail on the backend and the app will fall back to local suggestions where possible.
 
 ---
 
