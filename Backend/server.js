@@ -7,9 +7,10 @@ const express = require('express');
 const cors = require('cors');
 const { createAppointment, isSlotBooked, getAllAppointments, deleteAppointmentById, deleteAllAppointments } = require('./db');
 const { sendAppointmentConfirmation } = require('./email');
+const { buildTopicClassifierMessages } = require('./agentPrompt');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 4010;
 
 app.use(cors({
   origin: true,
@@ -163,6 +164,63 @@ function generateSlots(branchId, dateString) {
   }
 
   return slots;
+}
+
+function normalizeTopicName(name) {
+  const allowedNames = new Set(topics.map((t) => t.name));
+  return allowedNames.has(name) ? name : null;
+}
+
+async function suggestTopicFromOpenAI(userText) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is not set');
+  }
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      temperature: 0,
+      messages: buildTopicClassifierMessages(
+        userText,
+        topics.map((t) => t.name)
+      ),
+      response_format: { type: 'json_object' },
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`OpenAI request failed: ${response.status} ${text}`);
+  }
+
+  const data = await response.json();
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error('OpenAI response missing content');
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(content);
+  } catch (err) {
+    throw new Error(`Failed to parse OpenAI JSON: ${err.message}`);
+  }
+
+  const topicName = normalizeTopicName(parsed?.topicName);
+  if (!topicName) {
+    throw new Error('OpenAI returned invalid topicName');
+  }
+
+  return {
+    topicName,
+    reason: typeof parsed?.reason === 'string' ? parsed.reason : '',
+  };
 }
 
 // -----------------------------------------------------------------------------
@@ -394,13 +452,39 @@ app.post('/api/appointments', (req, res) => {
   res.status(201).json(appointment);
 });
 
-// 6. GET /api/appointments (admin: list all)
+// 6. POST /api/agent/topic-suggestion
+app.post('/api/agent/topic-suggestion', async (req, res) => {
+  const { message } = req.body || {};
+  if (!message || typeof message !== 'string') {
+    return res.status(400).json({
+      error: 'Missing required field: message',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  try {
+    const suggestion = await suggestTopicFromOpenAI(message);
+    return res.json({
+      topicName: suggestion.topicName,
+      reason: suggestion.reason,
+      source: 'openai',
+    });
+  } catch (err) {
+    console.error('[agent] topic suggestion failed:', err.message);
+    return res.status(502).json({
+      error: 'Failed to get topic suggestion',
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+// 7. GET /api/appointments (admin: list all)
 app.get('/api/appointments', (req, res) => {
   const appointments = getAllAppointments();
   res.json(appointments);
 });
 
-// 7. DELETE /api/appointments/:id (admin: delete)
+// 8. DELETE /api/appointments/:id (admin: delete)
 app.delete('/api/appointments/:id', (req, res) => {
   const { id } = req.params || {};
   if (!id) {
@@ -421,7 +505,7 @@ app.delete('/api/appointments/:id', (req, res) => {
   return res.status(204).send();
 });
 
-// 8. DELETE /api/appointments (admin: delete all)
+// 9. DELETE /api/appointments (admin: delete all)
 app.delete('/api/appointments', (req, res) => {
   const deletedCount = deleteAllAppointments();
   return res.status(200).json({ deleted: deletedCount });
@@ -431,8 +515,10 @@ app.delete('/api/appointments', (req, res) => {
 // Start server
 // -----------------------------------------------------------------------------
 
-app.listen(PORT, () => {
-  console.log(`Backend server listening on http://localhost:${PORT}`);
+const HOST = process.env.HOST || '127.0.0.1';
+
+const server = app.listen(PORT, HOST, () => {
+  console.log(`Backend server listening on http://${HOST}:${PORT}`);
   if (!process.env.RESEND_API_KEY) {
     console.log('');
     console.log('Email: RESEND_API_KEY is not set. To enable confirmation emails:');
@@ -445,3 +531,14 @@ app.listen(PORT, () => {
     console.log('Email: RESEND_API_KEY set — confirmation emails enabled.');
   }
 });
+
+server.on('error', (err) => {
+  console.error('[server] listen error:', err.message);
+});
+
+server.on('close', () => {
+  console.warn('[server] closed unexpectedly');
+});
+
+// Keep the server handle referenced so Node does not exit right after startup.
+server.ref();

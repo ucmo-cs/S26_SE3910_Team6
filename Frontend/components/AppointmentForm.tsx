@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { Fragment, useState, useEffect, useRef } from 'react';
 import { Calendar, Clock, MapPin, FileText, User, Mail, CheckCircle } from 'lucide-react';
 import { Appointment } from '../App';
 import { apiService } from '../services/api';
@@ -32,6 +32,7 @@ export function AppointmentForm({ onAppointmentBooked, onLogout }: AppointmentFo
   const [agentInput, setAgentInput] = useState('');
   const [agentResponse, setAgentResponse] = useState<string | null>(null);
   const [agentMode, setAgentMode] = useState<'idle' | 'guide'>('idle');
+  const [agentLoading, setAgentLoading] = useState(false);
   const branchPinPositions: Record<string, { left: number; top: number }> = {
     'Downtown Main Branch': { left: 48, top: 52 },
     'Westside Branch': { left: 28, top: 46 },
@@ -148,7 +149,7 @@ export function AppointmentForm({ onAppointmentBooked, onLogout }: AppointmentFo
     return null;
   };
 
-  const handleAgentSubmit = (e: React.FormEvent) => {
+  const handleAgentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = agentInput.trim().toLowerCase();
     if (!trimmed || trimmed.includes("not sure") || trimmed.includes("unsure") || trimmed.includes("dont know") || trimmed.includes("don't know")) {
@@ -157,14 +158,27 @@ export function AppointmentForm({ onAppointmentBooked, onLogout }: AppointmentFo
       return;
     }
 
-    const suggestion = getTopicSuggestion(agentInput);
-    if (suggestion) {
-      setAgentResponse(`It sounds like “${suggestion}” is the best fit. Select that topic to continue.`);
+    try {
+      setAgentLoading(true);
+      const aiSuggestion = await apiService.suggestAppointmentTopic(agentInput);
+      setAgentResponse(`It sounds like “${aiSuggestion.topicName}” is the best fit. ${aiSuggestion.reason}`);
       setAgentMode('idle');
-    } else {
-      setAgentMode('guide');
-      setAgentResponse('I can help! Choose a description below, and I’ll point you to the right topic:');
+      return;
+    } catch (err) {
+      console.error('AI topic suggestion failed, using local fallback:', err);
+    } finally {
+      setAgentLoading(false);
     }
+
+    const localSuggestion = getTopicSuggestion(agentInput);
+    if (localSuggestion) {
+      setAgentResponse(`It sounds like “${localSuggestion}” is the best fit. Select that topic to continue.`);
+      setAgentMode('idle');
+      return;
+    }
+
+    setAgentMode('guide');
+    setAgentResponse('I can help! Choose a description below, and I’ll point you to the right topic:');
   };
 
   const handleAgentOption = (label: string, hint: string) => {
@@ -290,6 +304,14 @@ export function AppointmentForm({ onAppointmentBooked, onLogout }: AppointmentFo
     });
   };
 
+  const steps = [
+    { num: 1, label: 'Topic' },
+    { num: 2, label: 'Branch' },
+    { num: 3, label: 'Date' },
+    { num: 4, label: 'Time' },
+    { num: 5, label: 'Details' },
+  ];
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       {/* Header */}
@@ -312,42 +334,50 @@ export function AppointmentForm({ onAppointmentBooked, onLogout }: AppointmentFo
 
       {/* Progress Steps */}
       <div className="mb-8">
-        <div className="flex items-center justify-between max-w-2xl mx-auto">
-          {[
-            { num: 1, label: 'Topic' },
-            { num: 2, label: 'Branch' },
-            { num: 3, label: 'Date' },
-            { num: 4, label: 'Time' },
-            { num: 5, label: 'Details' },
-          ].map((step, index) => (
-            <div key={step.num} className="flex items-center flex-1">
-              <div className="flex flex-col items-center flex-1">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center font-medium transition-colors text-white"
-                  style={{
-                    backgroundColor: currentStep >= step.num ? '#016649' : '#e5e7eb',
-                    color: currentStep >= step.num ? '#ffffff' : '#4b5563'
-                  }}
-                >
-                  {currentStep > step.num ? (
-                    <CheckCircle className="w-5 h-5" />
-                  ) : (
-                    step.num
-                  )}
+        <div className="max-w-2xl mx-auto">
+          <div className="flex items-center">
+            {steps.map((step, index) => (
+              <Fragment key={`node-${step.num}`}>
+                <div className="w-16 shrink-0 flex justify-center">
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center font-medium transition-colors text-white"
+                    style={{
+                      backgroundColor: currentStep >= step.num ? '#016649' : '#e5e7eb',
+                      color: currentStep >= step.num ? '#ffffff' : '#4b5563'
+                    }}
+                  >
+                    {currentStep > step.num ? (
+                      <CheckCircle className="w-5 h-5" />
+                    ) : (
+                      <span className="inline-block w-[1ch] text-center leading-none tabular-nums">
+                        {step.num}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <span className="text-xs mt-1 text-gray-600">{step.label}</span>
-              </div>
-              {index < 4 && (
-                <div
-                  className="h-1 flex-1 mx-2 transition-colors"
-                  style={{
-                    backgroundColor: currentStep > step.num ? '#016649' : '#e5e7eb',
-                    marginTop: '-20px'
-                  }}
-                />
-              )}
-            </div>
-          ))}
+                {index < steps.length - 1 && (
+                  <div
+                    className="h-1 flex-1 mx-3 transition-colors"
+                    style={{
+                      backgroundColor: currentStep > step.num ? '#016649' : '#e5e7eb'
+                    }}
+                  />
+                )}
+              </Fragment>
+            ))}
+          </div>
+          <div className="flex mt-1">
+            {steps.map((step, index) => (
+              <Fragment key={`label-${step.num}`}>
+                <div className="w-16 shrink-0 text-center text-xs text-gray-600">
+                  {step.label}
+                </div>
+                {index < steps.length - 1 && (
+                  <div className="flex-1 mx-3" />
+                )}
+              </Fragment>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -408,15 +438,28 @@ export function AppointmentForm({ onAppointmentBooked, onLogout }: AppointmentFo
               onChange={(e) => setAgentInput(e.target.value)}
               className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
               placeholder="e.g., open a credit card"
+              disabled={agentLoading}
             />
             <button
               type="submit"
               className="px-3 py-2 text-sm text-white rounded-lg"
               style={{ backgroundColor: '#016649' }}
+              disabled={agentLoading}
             >
-              Ask
+              {agentLoading ? 'Thinking...' : 'Ask'}
             </button>
           </form>
+          {agentLoading && (
+            <div className="mt-3">
+              <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full w-1/2 rounded-full animate-pulse"
+                  style={{ backgroundColor: '#016649' }}
+                />
+              </div>
+              <div className="mt-1 text-xs text-gray-500">Analyzing your request...</div>
+            </div>
+          )}
           {agentResponse && (
             <div className="mt-3 text-sm text-gray-700">
               {agentResponse}

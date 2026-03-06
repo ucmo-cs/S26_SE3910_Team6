@@ -46,10 +46,10 @@
 
 // Set to true to use mock data (for frontend development without backend)
 // Set to false to connect to your backend
-const USE_MOCK_DATA = false;
+const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
 
-// Configure your backend URL here
-const API_BASE_URL = 'http://localhost:3001/api';
+// Configure your backend URL here (override in root .env with VITE_API_BASE_URL)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4010/api';
 
 
 // ============================================================================
@@ -160,6 +160,12 @@ interface AppointmentResponse {
   dateTime: string;
   reason: string;
   createdAt?: string;
+}
+
+interface TopicSuggestionResponse {
+  topicName: string;
+  reason: string;
+  source?: string;
 }
 
 class ApiService {
@@ -401,6 +407,31 @@ class ApiService {
     if (!response.ok) {
       throw new Error('Failed to delete appointments');
     }
+  }
+
+  /**
+   * POST /api/agent/topic-suggestion
+   * Gets a topic recommendation from backend AI agent
+   */
+  async suggestAppointmentTopic(message: string): Promise<TopicSuggestionResponse> {
+    if (this.useMock) {
+      await this.delay();
+      throw new Error('AI suggestion is not available in mock mode');
+    }
+
+    const response = await fetch(`${this.baseUrl}/agent/topic-suggestion`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ message }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to get topic suggestion');
+    }
+
+    return response.json();
   }
 
   /**
