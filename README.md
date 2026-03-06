@@ -137,6 +137,12 @@ The frontend is configured to talk to the Node backend at `http://localhost:3001
 - The backend uses a unique constraint on `(branch_id, date_time)` to prevent double-booking a time slot.
 - Time slots are generated on the fly based on business hours and marked as available/unavailable by checking existing bookings in the DB.
 
+###OpenAI help
+
+To enable AI assistance with topic selection, you need an API key from OpenAI. Once you have the key, in the .env
+file, replace the 
+
+
 ### Email confirmations
 
 When an appointment is booked, the backend can send a confirmation email via [Resend](https://resend.com) (API key only, no password):
