@@ -3,11 +3,15 @@ import { LogIn } from 'lucide-react';
 
 interface LoginPageProps {
   onLogin: (isAdmin: boolean) => void;
+  onContinueAsGuest?: () => void;
+  variant?: 'page' | 'inline';
+  subtitle?: string;
 }
 
-export function LoginPage({ onLogin }: LoginPageProps) {
+export function LoginPage({ onLogin, onContinueAsGuest, variant = 'page', subtitle = 'Sign in to schedule your appointment' }: LoginPageProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const isInline = variant === 'inline';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,15 +23,15 @@ export function LoginPage({ onLogin }: LoginPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center px-4">
-      <div className="max-w-md w-full">
+    <div className={isInline ? 'bg-white px-4' : 'min-h-screen bg-white flex items-center justify-center px-4'}>
+      <div className={isInline ? 'max-w-md w-full mx-auto' : 'max-w-md w-full'}>
         {/* Logo/Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4" style={{ backgroundColor: '#016649' }}>
             <LogIn className="w-8 h-8 text-white" />
           </div>
           <h1 className="mb-2">Bank Appointment System</h1>
-          <p className="text-gray-600">Sign in to schedule your appointment</p>
+          <p className="text-gray-600">{subtitle}</p>
         </div>
 
         {/* Login Form */}
@@ -76,6 +80,23 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             </button>
           </form>
 
+          {onContinueAsGuest && (
+            <>
+              <div className="flex items-center my-6">
+                <div className="flex-1 border-t border-gray-200" />
+                <span className="mx-3 text-xs text-gray-500">OR</span>
+                <div className="flex-1 border-t border-gray-200" />
+              </div>
+              <button
+                type="button"
+                className="w-full px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                onClick={onContinueAsGuest}
+              >
+                Continue as Guest
+              </button>
+            </>
+          )}
+
           {/* Mock Login Notice */}
           <div className="mt-6 p-4 rounded-lg border" style={{ backgroundColor: '#ffd10020', borderColor: '#ffd100' }}>
             <p className="text-sm text-center" style={{ color: '#016649' }}>
@@ -85,9 +106,11 @@ export function LoginPage({ onLogin }: LoginPageProps) {
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-6 text-sm text-gray-600">
-          <p>Need help? Contact support at (555) 123-4567</p>
-        </div>
+        {!isInline && (
+          <div className="text-center mt-6 text-sm text-gray-600">
+            <p>Need help? Contact support at (555) 123-4567</p>
+          </div>
+        )}
       </div>
     </div>
   );

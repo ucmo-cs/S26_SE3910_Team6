@@ -2,6 +2,7 @@ import { Fragment, useState, useEffect, useRef } from 'react';
 import { Calendar, Clock, MapPin, FileText, User, Mail, CheckCircle } from 'lucide-react';
 import { Appointment } from '../App';
 import { apiService } from '../services/api';
+import { LoginPage } from './LoginPage';
 
 interface Topic {
   id: string;
@@ -25,13 +26,15 @@ interface TimeSlot {
 interface AppointmentFormProps {
   onAppointmentBooked: (appointment: Appointment) => void;
   onLogout: () => void;
+  onLogin: (isAdmin: boolean) => void;
+  isLoggedIn: boolean;
+  onBackHome: () => void;
 }
 
-export function AppointmentForm({ onAppointmentBooked, onLogout }: AppointmentFormProps) {
+export function AppointmentForm({ onAppointmentBooked, onLogout, onLogin, isLoggedIn, onBackHome }: AppointmentFormProps) {
   const [hoveredBranchId, setHoveredBranchId] = useState<string | null>(null);
   const [agentInput, setAgentInput] = useState('');
   const [agentResponse, setAgentResponse] = useState<string | null>(null);
-  const [agentMode, setAgentMode] = useState<'idle' | 'guide'>('idle');
   const [agentLoading, setAgentLoading] = useState(false);
   const branchPinPositions: Record<string, { left: number; top: number }> = {
     'Downtown Main Branch': { left: 48, top: 52 },
@@ -58,6 +61,8 @@ export function AppointmentForm({ onAppointmentBooked, onLogout }: AppointmentFo
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [reason, setReason] = useState('');
+  const [loginReturnStep, setLoginReturnStep] = useState(4);
+  const [loginStage, setLoginStage] = useState<'choice' | 'form'>('choice');
 
   // Data from API
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -129,32 +134,11 @@ export function AppointmentForm({ onAppointmentBooked, onLogout }: AppointmentFo
     }
   };
 
-  const getTopicSuggestion = (input: string) => {
-    const text = input.toLowerCase();
-    if (text.includes('loan') || text.includes('borrow') || text.includes('rate') || text.includes('refinance')) {
-      return 'Personal Loans';
-    }
-    if (text.includes('credit') || text.includes('card') || text.includes('limit') || text.includes('balance')) {
-      return 'Credit Cards';
-    }
-    if (text.includes('mortgage') || text.includes('home') || text.includes('house')) {
-      return 'Mortgage Services';
-    }
-    if (text.includes('invest') || text.includes('retire') || text.includes('portfolio') || text.includes('planning')) {
-      return 'Investment Advisory';
-    }
-    if (text.includes('business') || text.includes('merchant') || text.includes('payroll') || text.includes('company')) {
-      return 'Business Banking';
-    }
-    return null;
-  };
-
   const handleAgentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = agentInput.trim().toLowerCase();
-    if (!trimmed || trimmed.includes("not sure") || trimmed.includes("unsure") || trimmed.includes("dont know") || trimmed.includes("don't know")) {
-      setAgentMode('guide');
-      setAgentResponse('No worries! Pick the option that fits best:');
+    const trimmed = agentInput.trim();
+    if (!trimmed) {
+      setAgentResponse('Please describe what you need help with.');
       return;
     }
 
@@ -162,33 +146,11 @@ export function AppointmentForm({ onAppointmentBooked, onLogout }: AppointmentFo
       setAgentLoading(true);
       const aiSuggestion = await apiService.suggestAppointmentTopic(agentInput);
       setAgentResponse(`It sounds like “${aiSuggestion.topicName}” is the best fit. ${aiSuggestion.reason}`);
-      setAgentMode('idle');
-      return;
     } catch (err) {
-      console.error('AI topic suggestion failed, using local fallback:', err);
+      console.error('AI topic suggestion failed:', err);
+      setAgentResponse('Sorry, the AI helper is unavailable right now. Please try again.');
     } finally {
       setAgentLoading(false);
-    }
-
-    const localSuggestion = getTopicSuggestion(agentInput);
-    if (localSuggestion) {
-      setAgentResponse(`It sounds like “${localSuggestion}” is the best fit. Select that topic to continue.`);
-      setAgentMode('idle');
-      return;
-    }
-
-    setAgentMode('guide');
-    setAgentResponse('I can help! Choose a description below, and I’ll point you to the right topic:');
-  };
-
-  const handleAgentOption = (label: string, hint: string) => {
-    setAgentInput(hint);
-    const suggestion = getTopicSuggestion(hint);
-    if (suggestion) {
-      setAgentResponse(`That sounds like “${suggestion}”. Select it to continue.`);
-      setAgentMode('idle');
-    } else {
-      setAgentResponse(`Thanks! Based on that, try: ${label}.`);
     }
   };
 
@@ -243,12 +205,16 @@ export function AppointmentForm({ onAppointmentBooked, onLogout }: AppointmentFo
 
   const handleTimeSelect = (time: string) => {
     setSelectedTime(time);
-    setCurrentStep(5);
+    if (isLoggedIn) {
+      setCurrentStep(6);
+    } else {
+      setLoginReturnStep(4);
+      setLoginStage('choice');
+      setCurrentStep(5);
+    }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const submitAppointment = async () => {
     if (!selectedTopic || !selectedBranch || !selectedDate || !selectedTime) {
       setError('Please complete all required fields.');
       return;
@@ -283,6 +249,28 @@ export function AppointmentForm({ onAppointmentBooked, onLogout }: AppointmentFo
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!selectedTopic || !selectedBranch || !selectedDate || !selectedTime) {
+      setError('Please complete all required fields.');
+      return;
+    }
+
+    await submitAppointment();
+  };
+
+  const handleLoginAndContinue = (isAdminLogin: boolean) => {
+    onLogin(isAdminLogin);
+    if (!isAdminLogin) {
+      setCurrentStep(6);
+    }
+  };
+
+  const handleContinueAsGuest = () => {
+    setCurrentStep(6);
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
@@ -309,27 +297,52 @@ export function AppointmentForm({ onAppointmentBooked, onLogout }: AppointmentFo
     { num: 2, label: 'Branch' },
     { num: 3, label: 'Date' },
     { num: 4, label: 'Time' },
-    { num: 5, label: 'Details' },
+    { num: 5, label: 'Sign In' },
+    { num: 6, label: 'Details' },
   ];
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
-        <div>
+      <div className="flex flex-col gap-4 mb-8">
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            className="text-sm hover:underline"
+            style={{ color: '#FFD100' }}
+            onClick={onBackHome}
+          >
+            ← Back to Home
+          </button>
+          {!isLoggedIn ? (
+            <button
+              type="button"
+              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              onClick={() => {
+                setLoginReturnStep(currentStep);
+                setLoginStage('form');
+                setCurrentStep(5);
+              }}
+            >
+              Admin Login
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="px-4 py-2 text-white rounded-lg"
+              style={{ backgroundColor: '#016649' }}
+              onClick={onLogout}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#014d37'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#016649'}
+            >
+              Log Out
+            </button>
+          )}
+        </div>
+        <div className="min-w-[220px]">
           <h1 className="mb-2">Book an Appointment</h1>
           <p className="text-gray-600">Schedule a visit with one of our representatives</p>
         </div>
-        <button
-          type="button"
-          className="px-4 py-2 text-white rounded-lg"
-          style={{ backgroundColor: '#016649' }}
-          onClick={onLogout}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#014d37'}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#016649'}
-        >
-          Log Out
-        </button>
       </div>
 
       {/* Progress Steps */}
@@ -463,45 +476,6 @@ export function AppointmentForm({ onAppointmentBooked, onLogout }: AppointmentFo
           {agentResponse && (
             <div className="mt-3 text-sm text-gray-700">
               {agentResponse}
-            </div>
-          )}
-          {agentMode === 'guide' && (
-            <div className="mt-3 grid gap-2 text-sm">
-              <button
-                type="button"
-                className="text-left px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
-                onClick={() => handleAgentOption('Personal Loans', 'I want to borrow money or discuss loan rates')}
-              >
-                Borrow money or loan rates
-              </button>
-              <button
-                type="button"
-                className="text-left px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
-                onClick={() => handleAgentOption('Credit Cards', 'I want a new credit card or have a card question')}
-              >
-                Credit card help
-              </button>
-              <button
-                type="button"
-                className="text-left px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
-                onClick={() => handleAgentOption('Mortgage Services', 'I need help with a home loan or mortgage')}
-              >
-                Home loan / mortgage
-              </button>
-              <button
-                type="button"
-                className="text-left px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
-                onClick={() => handleAgentOption('Investment Advisory', 'I want investment or retirement advice')}
-              >
-                Investing / retirement
-              </button>
-              <button
-                type="button"
-                className="text-left px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
-                onClick={() => handleAgentOption('Business Banking', 'I have a business and need banking services')}
-              >
-                Business banking
-              </button>
             </div>
           )}
         </div>
@@ -742,8 +716,76 @@ export function AppointmentForm({ onAppointmentBooked, onLogout }: AppointmentFo
         </div>
       )}
 
-      {/* Step 5: Enter Details and Confirm */}
+      {/* Step 5: Sign In or Continue as Guest */}
       {currentStep === 5 && (
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          <button
+            type="button"
+            onClick={() => {
+              if (loginStage === 'form') {
+                setLoginStage('choice');
+                return;
+              }
+              setCurrentStep(loginReturnStep);
+            }}
+            className="text-sm mb-4 hover:underline"
+            style={{ color: '#FFD100' }}
+          >
+            ← Back
+          </button>
+          {loginStage === 'choice' ? (
+            <div className="space-y-4">
+              <h2 className="mb-2">Sign In or Continue as Guest</h2>
+              <p className="text-sm text-gray-600">
+                You can finish booking as a guest, or sign in to personalize your appointment.
+              </p>
+              <div className="grid gap-3 md:grid-cols-2">
+                <button
+                  type="button"
+                  className="p-4 border-2 border-gray-200 rounded-lg text-left transition-colors"
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#74BE42';
+                    e.currentTarget.style.backgroundColor = '#ffd10010';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.backgroundColor = '';
+                  }}
+                  onClick={() => setLoginStage('form')}
+                >
+                  <div className="font-medium mb-1">Sign In</div>
+                  <div className="text-sm text-gray-600">Use your account or admin credentials.</div>
+                </button>
+                <button
+                  type="button"
+                  className="p-4 border-2 border-gray-200 rounded-lg text-left transition-colors"
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#74BE42';
+                    e.currentTarget.style.backgroundColor = '#ffd10010';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.backgroundColor = '';
+                  }}
+                  onClick={handleContinueAsGuest}
+                >
+                  <div className="font-medium mb-1">Continue as Guest</div>
+                  <div className="text-sm text-gray-600">No account needed to finish booking.</div>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <LoginPage
+              variant="inline"
+              subtitle="Sign in to personalize your appointment."
+              onLogin={handleLoginAndContinue}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Step 6: Enter Details and Confirm */}
+      {currentStep === 6 && (
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <h2 className="mb-6">
             <User className="w-5 h-5 inline mr-2" style={{ color: '#FFD100' }} />

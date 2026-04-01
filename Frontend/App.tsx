@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { LoginPage } from './components/LoginPage';
 import { AppointmentForm } from './components/AppointmentForm';
 import { ConfirmationPage } from './components/ConfirmationPage';
 import { AdminPage } from './components/AdminPage';
+import { HomePage } from './components/HomePage';
 
 export interface Appointment {
   id?: string;
@@ -18,9 +18,14 @@ export interface Appointment {
 }
 
 export default function App() {
+  const [showHome, setShowHome] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [confirmedAppointment, setConfirmedAppointment] = useState<Appointment | null>(null);
+
+  const handleGetStarted = () => {
+    setShowHome(false);
+  };
 
   const handleLogin = (adminMode: boolean) => {
     setIsLoggedIn(true);
@@ -31,6 +36,7 @@ export default function App() {
     setIsLoggedIn(false);
     setIsAdmin(false);
     setConfirmedAppointment(null);
+    setShowHome(true);
   };
 
   const handleAppointmentBooked = (appointment: Appointment) => {
@@ -41,28 +47,30 @@ export default function App() {
     setConfirmedAppointment(null);
   };
 
-  // Show login page if not logged in
-  if (!isLoggedIn) {
-    return <LoginPage onLogin={handleLogin} />;
+  if (showHome) {
+    return <HomePage onGetStarted={handleGetStarted} />;
   }
 
   if (isAdmin) {
     return <AdminPage onLogout={handleLogout} />;
   }
 
-  // Show appointment booking system after login
   return (
     <div className="min-h-screen bg-white">
       {!confirmedAppointment ? (
         <AppointmentForm
           onAppointmentBooked={handleAppointmentBooked}
           onLogout={handleLogout}
+          onLogin={handleLogin}
+          isLoggedIn={isLoggedIn}
+          onBackHome={() => setShowHome(true)}
         />
       ) : (
         <ConfirmationPage 
           appointment={confirmedAppointment} 
           onBookAnother={handleBookAnother}
           onLogout={handleLogout}
+          isLoggedIn={isLoggedIn}
         />
       )}
     </div>

@@ -177,6 +177,12 @@ async function suggestTopicFromOpenAI(userText) {
     throw new Error('OPENAI_API_KEY is not set');
   }
 
+  const maxChars = Number(process.env.OPENAI_MAX_INPUT_CHARS || 1200);
+  const trimmedInput =
+    typeof userText === 'string' && userText.length > maxChars
+      ? userText.slice(0, maxChars)
+      : userText;
+
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -187,7 +193,7 @@ async function suggestTopicFromOpenAI(userText) {
       model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
       temperature: 0,
       messages: buildTopicClassifierMessages(
-        userText,
+        trimmedInput,
         topics.map((t) => t.name)
       ),
       response_format: { type: 'json_object' },

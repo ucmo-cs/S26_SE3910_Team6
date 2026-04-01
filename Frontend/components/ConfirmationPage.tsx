@@ -5,9 +5,10 @@ interface ConfirmationPageProps {
   appointment: Appointment;
   onBookAnother: () => void;
   onLogout: () => void;
+  isLoggedIn: boolean;
 }
 
-export function ConfirmationPage({ appointment, onBookAnother, onLogout }: ConfirmationPageProps) {
+export function ConfirmationPage({ appointment, onBookAnother, onLogout, isLoggedIn }: ConfirmationPageProps) {
   const formatDateTime = (dateTimeString: string) => {
     const date = new Date(dateTimeString);
     return {
@@ -30,18 +31,20 @@ export function ConfirmationPage({ appointment, onBookAnother, onLogout }: Confi
   return (
     <div className="max-w-2xl mx-auto px-4 py-12">
       <div className="bg-white rounded-lg shadow-lg p-8">
-        <div className="flex justify-end mb-4">
-          <button
-            type="button"
-            className="px-4 py-2 text-white rounded-lg"
-            style={{ backgroundColor: '#016649' }}
-            onClick={onLogout}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#014d37'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#016649'}
-          >
-            Log Out
-          </button>
-        </div>
+        {isLoggedIn && (
+          <div className="flex justify-end mb-4">
+            <button
+              type="button"
+              className="px-4 py-2 text-white rounded-lg"
+              style={{ backgroundColor: '#016649' }}
+              onClick={onLogout}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#014d37'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#016649'}
+            >
+              Log Out
+            </button>
+          </div>
+        )}
         {/* Success Icon */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
