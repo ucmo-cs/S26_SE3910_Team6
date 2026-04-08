@@ -70,7 +70,10 @@ export function HomePage({ onGetStarted }: HomePageProps) {
         <h2 className="text-center mb-10 text-sm font-medium" style={{ color: '#6b7280' }}>
           Why Book With Us?
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
+        <div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10"
+          style={{ rowGap: '3rem' }}
+        >
           <div className="text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-6" style={{ backgroundColor: '#74BE42' }}>
               <Calendar className="w-8 h-8 text-white" />
