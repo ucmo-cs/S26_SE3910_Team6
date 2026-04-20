@@ -65,7 +65,7 @@ No separate database server is required; SQLite is embedded and stored in a loca
 Clone the repository:
 
 ```bash
-git clone https://github.com/BryceCounts1/AppointmentPrototype.git
+git clone https://github.com/ucmo-cs/S26_SE3910_Team6/AppointmentPrototype.git
 cd AppointmentPrototype
 ```
 
