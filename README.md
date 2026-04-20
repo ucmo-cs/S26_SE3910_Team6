@@ -66,7 +66,7 @@ Clone the repository:
 
 ```bash
 git clone https://github.com/ucmo-cs/S26_SE3910_Team6.git
-cd AppointmentPrototype
+cd S26_SE3910_Team6
 ```
 
 Install dependencies:
